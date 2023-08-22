@@ -841,10 +841,10 @@ class IBStore(with_metaclass(MetaSingleton, object)):
 
             try:
                 logger.debug("Connect (host={self.p.host}, port={self.p.port}, clientId={self.clientId})")
-                if self.conn.connect(self.p.host, self.p.port, self.clientId):
-                    if not fromstart or resub:
-                        self.startdatas()
-                    return True  # connection successful
+                self.conn.connect(self.p.host, self.p.port, self.clientId)
+                if not fromstart or resub:
+                    self.startdatas()
+                return True  # connection successful
             except Exception as e:
                 logger.exception(f"Failed to Connect {e}")
                 return False
