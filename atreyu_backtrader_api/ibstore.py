@@ -842,6 +842,8 @@ class IBStore(with_metaclass(MetaSingleton, object)):
             try:
                 logger.debug("Connect (host={self.p.host}, port={self.p.port}, clientId={self.clientId})")
                 self.conn.connect(self.p.host, self.p.port, self.clientId)
+                self.apiThread = threading.Thread(target=self.conn.run, daemon=True)
+                self.apiThread.start()
                 if not fromstart or resub:
                     self.startdatas()
                 return True  # connection successful
