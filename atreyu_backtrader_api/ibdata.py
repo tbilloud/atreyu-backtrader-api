@@ -536,6 +536,9 @@ class IBData(with_metaclass(MetaIBData, DataBase)):
                     # self._statelivereconn = False
                     # continue  # to reenter the loop and hit st_historback
 
+                if not self.ib.apiThread.is_alive():
+                    logger.error('IB api thread is not alive')
+
                 if msg is None:  # Conn broken during historical/backfilling
                     self._subcription_valid = False
                     self.put_notification(self.CONNBROKEN)
