@@ -667,6 +667,10 @@ class IBStore(with_metaclass(MetaSingleton, object)):
         self._event_managed_accounts = threading.Event()
         self._event_accdownload = threading.Event()
 
+        # Manage order requests
+        self._event_open_orders_complete = threading.Event()
+        self.open_orders_list = []  # List to store open orders
+
         self.dontreconnect = False  # for non-recoverable connect errors
 
         self._env = None  # reference to cerebro for general notifications
@@ -2000,10 +2004,23 @@ class IBStore(with_metaclass(MetaSingleton, object)):
     def openOrder(self, msg):
         '''Receive the event ``openOrder`` events'''
         self.broker.push_orderstate(msg)
-    
+        self.open_orders_list.append(msg)
+
     def openOrderEnd(self):
         # TODO: Add event to manage order requests 
         logger.debug(f"openOrderEnd")
+        self._event_open_orders_complete.set()
+
+    def reqAllOpenOrders(self):
+        '''Request all open orders'''
+        self.conn.reqAllOpenOrders()
+
+    def fetchAllOpenOrders(self):
+        self._event_open_orders_complete.clear()
+        self.open_orders_list = []
+        self.reqAllOpenOrders()
+        self._event_open_orders_complete.wait()
+        return self.open_orders_list
     
     def execDetails(self, reqId, contract, execution):
         '''Receive execDetails'''

@@ -594,3 +594,13 @@ class IBBroker(with_metaclass(MetaIBBroker, BrokerBase)):
                                            'Canceled']:
                 # This is most likely due to an expiration]
                 order._willexpire = True
+
+    # ADDED
+    # Function to get pending orders.
+    # It's intented to be similar to the function with the same name in bbroker.py. However in bbroker.py the
+    # function manages order via self.pending (a list of orders, similar to orderbyid here). I'm not sure if the
+    # function should do the same here.
+    # I could implement fetchAllOpenOrders here, but it uses a threading.Event() which are only used in the store class
+    # TODO: the function returns a list of OpenOrderMsg, should be IBOrder
+    def get_orders_open(self, safe=False):
+        return self.ib.fetchAllOpenOrders()
