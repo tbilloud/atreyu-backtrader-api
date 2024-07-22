@@ -134,6 +134,7 @@ class IBOrder(OrderBase, ibapi.order.Order):
         self.ordtype = self.Buy if action == 'BUY' else self.Sell
 
         super(IBOrder, self).__init__()
+        self.transmit_IBOrder = self.transmit
         ibapi.order.Order.__init__(self)  # Invoke 2nd base class
 
         # Now fill in the specific IB parameters
@@ -176,7 +177,7 @@ class IBOrder(OrderBase, ibapi.order.Order):
 
         self.totalQuantity = abs(self.size)  # ib takes only positives
 
-        # self.m_transmit = self.transmit
+        self.transmit = self.transmit_IBOrder
         if self.parent is not None:
             self.parentId = self.parent.orderId
 
