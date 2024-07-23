@@ -178,7 +178,7 @@ class IBOrder(OrderBase, ibapi.order.Order):
 
         # self.m_transmit = self.transmit
         if self.parent is not None:
-            self.m_parentId = self.parent.orderId
+            self.parentId = self.parent.orderId
 
         # Time In Force: DAY, GTC, IOC, GTD
         if self.valid is None:
