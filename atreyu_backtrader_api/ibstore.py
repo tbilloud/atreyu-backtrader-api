@@ -917,7 +917,6 @@ class IBStore(with_metaclass(MetaSingleton, object)):
         # actually be of interest to the user
         if msg.reqId > 0:
             logger.error(f"{msg}")
-            print(f"Error: {msg}")
         else:
             logger.debug(f"{msg}")
 
