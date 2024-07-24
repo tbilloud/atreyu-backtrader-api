@@ -691,7 +691,8 @@ class IBStore(with_metaclass(MetaSingleton, object)):
         self.histsend = dict()  # holds sessionend (data time) for request
         self.histtz = dict()  # holds sessionend (data time) for request
 
-        self.acc_cash = AutoDict()  # current total cash per account
+        self.acc_cash = AutoDict()  # current total cash per account calculated in base currency
+        self.acc_cash_fx = AutoDict()  # current total cash per account for all currencies
         self.acc_value = AutoDict()  # current total value per account
         self.acc_upds = AutoDict()  # current account valueinfos per account
 
@@ -2148,7 +2149,9 @@ class IBStore(with_metaclass(MetaSingleton, object)):
                 self.acc_value[accountName] = value
             elif key == 'CashBalance' and currency == 'BASE':
                 self.acc_cash[accountName] = value
-    
+            elif key == 'CashBalance':
+                self.acc_cash_fx[accountName][currency] = value
+
     @logibmsg
     def get_acc_values(self, account=None):
         '''Returns all account value infos sent by TWS during regular updates
@@ -2252,5 +2255,33 @@ class IBStore(with_metaclass(MetaSingleton, object)):
 
             try:
                 return self.acc_cash[account]
+            except KeyError:
+                pass
+
+    @logibmsg
+    def get_acc_cash_fx(self, account=None):
+        '''same as get_acc_cash but for all cash balances'''
+        # Wait for at least 1 account update download to have been finished
+        # before the cash can be returned to the calling client
+        # if self.connected():
+        #     self._event_accdownload.wait()
+        # Lock access to acc_cash_fx to avoid an event intefering
+        with self._lock_accupd:
+            if account is None:
+                # # wait for the managedAccount Messages
+                # if self.connected():
+                #     self._event_managed_accounts.wait()
+
+                if not self.managed_accounts:
+                    return float()
+
+                elif len(self.managed_accounts) > 1:
+                    return sum(self.acc_cash_fx.values())
+
+                # Only 1 account, fall through to return only 1
+                account = self.managed_accounts[0]
+
+            try:
+                return self.acc_cash_fx[account]
             except KeyError:
                 pass

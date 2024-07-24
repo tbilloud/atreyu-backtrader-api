@@ -26,6 +26,7 @@ from copy import copy
 from datetime import date, datetime, timedelta
 import threading
 import uuid
+import decimal
 
 # import ib.ext.Order
 # import ib.opt as ibopt
@@ -336,9 +337,7 @@ class IBBroker(with_metaclass(MetaIBBroker, BrokerBase)):
         order.submit(self)
 
         # ocoize if needed
-        if order.oco is None:  # Generate a UniqueId
-            order.ocaGroup = bytes(uuid.uuid4())
-        else:
+        if order.oco:
             order.ocaGroup = self.orderbyid[order.oco.orderId].ocaGroup
 
         self.orderbyid[order.orderId] = order
@@ -493,7 +492,7 @@ class IBBroker(with_metaclass(MetaIBBroker, BrokerBase)):
                 ex = self.executions.pop(cr.execId)
                 oid = ex.orderId
                 order = self.orderbyid[oid]
-                ostatus = self.ordstatus[oid].pop(ex.cumQty)
+                ostatus = self.ordstatus[oid].pop(decimal.Decimal(str(ex.cumQty)))
 
                 position = self.getposition(order.data, clone=False)
                 pprice_orig = position.price
