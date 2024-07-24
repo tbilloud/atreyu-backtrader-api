@@ -336,9 +336,7 @@ class IBBroker(with_metaclass(MetaIBBroker, BrokerBase)):
         order.submit(self)
 
         # ocoize if needed
-        if order.oco is None:  # Generate a UniqueId
-            order.ocaGroup = bytes(uuid.uuid4())
-        else:
+        if order.oco:
             order.ocaGroup = self.orderbyid[order.oco.orderId].ocaGroup
 
         self.orderbyid[order.orderId] = order
