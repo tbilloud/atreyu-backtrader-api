@@ -600,6 +600,48 @@ class IBBroker(with_metaclass(MetaIBBroker, BrokerBase)):
     # function manages order via self.pending (a list of orders, similar to orderbyid here). I'm not sure if the
     # function should do the same here.
     # I could implement fetchAllOpenOrders here, but it uses a threading.Event() which are only used in the store class
-    # TODO: the function returns a list of OpenOrderMsg, should be IBOrder
-    def get_orders_open(self, safe=False):
-        return self.ib.fetchAllOpenOrders()
+    # Moreover the IBOrder classes is defined here in ibbroker.py
+    def get_orders_open(self):
+        # with self._lock_orders: # TODO: if using this a script calling get_orders_open in start() is sometimes stuck... why? maybe i need to wait a bit for connexion to finish?
+            msg_list = self.ib.fetchAllOpenOrdersMsg()
+            order_list = []
+            for m in msg_list:
+                print(type(m.order),m.order)
+                ib_order = IBOrder(
+                    orderId=m.orderId,
+                    contract=m.contract,
+                    order=m.order,
+                    orderState=m.orderState,
+                    action=m.order.action,
+                    size=m.order.totalQuantity,
+
+                    simulated=True,  # attribute from OrderBase that I use to avoid fetching the data object in the
+                    # constructor, since I want to be able to use this function in the start() function of backtrader
+                    # scripts (before the data object is created) # From _makeorder: owner=owner, data=data,
+                    # size=size, price=price, pricelimit=plimit, exectype=exectype, valid=valid, tradeid=tradeid,
+                    # clientId=self.ib.clientId, orderId=orderId, **kwargs
+
+                # class OpenOrderMsg(object):
+                #     def __init__(self, orderId, contract, order, orderState):
+                #         self.vars = vars()
+                #         del self.vars['self']
+                #         self.orderId = orderId
+                #         self.contract = contract
+                #         self.order = order
+                #         self.orderState = orderState
+
+                # def _makeorder(self, action, owner, data,
+                #                size, price=None, plimit=None,
+                #                exectype=None, valid=None,
+                #                tradeid=0, **kwargs):
+                #     orderId = self.ib.nextOrderId()
+                #     order = IBOrder(action, owner=owner, data=data,
+                #                     size=size, price=price, pricelimit=plimit,
+                #                     exectype=exectype, valid=valid,
+                #                     tradeid=tradeid,
+                #                     clientId=self.ib.clientId,
+                #                     orderId=orderId,
+                #                     **kwargs)
+                )
+                order_list.append(ib_order)
+            return order_list

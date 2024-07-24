@@ -2016,7 +2016,7 @@ class IBStore(with_metaclass(MetaSingleton, object)):
         '''Request all open orders'''
         self.conn.reqAllOpenOrders()
 
-    def fetchAllOpenOrders(self):
+    def fetchAllOpenOrdersMsg(self):
         self._event_open_orders_complete.clear()
         self.open_orders_list = []
         self.reqAllOpenOrders()
