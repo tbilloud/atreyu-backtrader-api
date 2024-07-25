@@ -489,62 +489,67 @@ class IBBroker(with_metaclass(MetaIBBroker, BrokerBase)):
     def push_commissionreport(self, cr):
         with self._lock_orders:
             try:
-                ex = self.executions.pop(cr.execId)
-                oid = ex.orderId
-                order = self.orderbyid[oid]
-                ostatus = self.ordstatus[oid].pop(decimal.Decimal(str(ex.cumQty)))
+                if cr.execId in self.executions:
+                    ex = self.executions.pop(cr.execId)
+                    oid = ex.orderId
+                    order = self.orderbyid[oid]
+                    ostatus = self.ordstatus[oid].pop(decimal.Decimal(str(ex.cumQty)))
 
-                position = self.getposition(order.data, clone=False)
-                pprice_orig = position.price
-                size = ex.shares if ex.side[0] == 'B' else -ex.shares
-                price = ex.price
-                # use pseudoupdate and let the updateportfolio do the real update?
-                psize, pprice, opened, closed = position.update(float(size), price)
+                    position = self.getposition(order.data, clone=False)
+                    pprice_orig = position.price
+                    size = ex.shares if ex.side[0] == 'B' else -ex.shares
+                    price = ex.price
+                    # use pseudoupdate and let the updateportfolio do the real update?
+                    psize, pprice, opened, closed = position.update(float(size), price)
 
-                # split commission between closed and opened
-                comm = cr.commission
-                closedcomm = comm * float(closed) / float(size)
-                openedcomm = comm - closedcomm
+                    # split commission between closed and opened
+                    comm = cr.commission
+                    closedcomm = comm * float(closed) / float(size)
+                    openedcomm = comm - closedcomm
 
-                comminfo = order.comminfo
-                closedvalue = comminfo.getoperationcost(closed, pprice_orig)
-                openedvalue = comminfo.getoperationcost(opened, price)
+                    comminfo = order.comminfo
+                    closedvalue = comminfo.getoperationcost(closed, pprice_orig)
+                    openedvalue = comminfo.getoperationcost(opened, price)
 
-                # default in m_pnl is MAXFLOAT
-                pnl = cr.realizedPNL if closed else 0.0
+                    # default in m_pnl is MAXFLOAT
+                    pnl = cr.realizedPNL if closed else 0.0
 
-                # The internal broker calc should yield the same result
-                # pnl = comminfo.profitandloss(-closed, pprice_orig, price)
+                    # The internal broker calc should yield the same result
+                    # pnl = comminfo.profitandloss(-closed, pprice_orig, price)
 
-                # Use the actual time provided by the execution object
-                # The report from TWS is in actual local time, not the data's tz
-                #dt = date2num(datetime.strptime(ex.time, '%Y%m%d  %H:%M:%S'))
-                dt_array = [] if ex.time == None else ex.time.split(" ")
-                if dt_array and len(dt_array) > 1:
-                  dt_array.pop()
-                  ex_time = " ".join(dt_array)
-                  dt = date2num(datetime.strptime(ex_time, '%Y%m%d %H:%M:%S'))
+                    # Use the actual time provided by the execution object
+                    # The report from TWS is in actual local time, not the data's tz
+                    #dt = date2num(datetime.strptime(ex.time, '%Y%m%d  %H:%M:%S'))
+                    dt_array = [] if ex.time == None else ex.time.split(" ")
+                    if dt_array and len(dt_array) > 1:
+                      dt_array.pop()
+                      ex_time = " ".join(dt_array)
+                      dt = date2num(datetime.strptime(ex_time, '%Y%m%d %H:%M:%S'))
+                    else:
+                      dt = date2num(datetime.strptime(ex.time, '%Y%m%d %H:%M:%S %A'))
+
+                    # Need to simulate a margin, but it plays no role, because it is
+                    # controlled by a real broker. Let's set the price of the item
+                    margin = order.data.close[0]
+
+                    order.execute(dt, float(size), price,
+                                float(closed), closedvalue, closedcomm,
+                                opened, openedvalue, openedcomm,
+                                margin, pnl,
+                                float(psize), pprice)
+
+                    if ostatus.status == self.FILLED:
+                        order.completed()
+                        self.ordstatus.pop(oid)  # nothing left to be reported
+                    else:
+                        order.partial()
+
+                    if oid not in self.tonotify:  # Lock needed
+                        self.tonotify.append(oid)
+
                 else:
-                  dt = date2num(datetime.strptime(ex.time, '%Y%m%d %H:%M:%S %A'))
+                    logger.warning(f"Execution ID {cr.execId} not found in executions dictionary.")
 
-                # Need to simulate a margin, but it plays no role, because it is
-                # controlled by a real broker. Let's set the price of the item
-                margin = order.data.close[0]
-
-                order.execute(dt, float(size), price,
-                            float(closed), closedvalue, closedcomm,
-                            opened, openedvalue, openedcomm,
-                            margin, pnl,
-                            float(psize), pprice)
-
-                if ostatus.status == self.FILLED:
-                    order.completed()
-                    self.ordstatus.pop(oid)  # nothing left to be reported
-                else:
-                    order.partial()
-
-                if oid not in self.tonotify:  # Lock needed
-                    self.tonotify.append(oid)
             except Exception as e:
                 logger.exception(f"Exception: {e}")
 
